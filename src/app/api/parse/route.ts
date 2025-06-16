@@ -26,8 +26,12 @@ export async function POST(req: NextRequest) {
     } else {
       parseError = "Unsupported file type";
     }
-  } catch (e: any) {
-    parseError = e.message;
+  } catch (e: unknown) {
+    if (e instanceof Error) {
+      parseError = e.message;
+    } else {
+      parseError = String(e);
+    }
   }
 
   return NextResponse.json({
