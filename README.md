@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Infralyze
+
+**Infralyze** is a full-stack infrastructure visualization tool that allows developers to upload Infrastructure-as-Code (IaC) files (YAML or JSON) and instantly generate a live, browser-based architecture diagram. The project is built using Next.js, TypeScript, Tailwind CSS, and Mermaid.js.
+
+---
+
+## Live Site
+
+[https://infralyzeapp.com](https://infralyzeapp.com)
+
+---
+
+## Features
+
+- Upload `.yaml`, `.yml`, or `.json` IaC files
+- Automatically parse and display service, database, and environment configurations
+- Generate a live infrastructure diagram using Mermaid.js
+- Fully typed backend and frontend (TypeScript)
+- Responsive, accessible user interface built with Tailwind CSS
+- Secure parsing on the backend with file validation
+
+---
+
+## Tech Stack
+
+Frontend: Next.js, React + TypeScript, Tailwind CSS
+Backend: API Routes, YAML/JSON Parsing, Mermaid.js
+Dev Tools: ESLint + Prettier, Vercel, Git + Github
+
+---
 
 ## Getting Started
 
-First, run the development server:
+Clone the repository and run the development server locally:
 
 ```bash
+git clone https://github.com/RohanSriram19/Infralyze-Project.git
+cd infralyze-clean
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+src/
+  ├── app/                 # App Router structure (Next.js 13+)
+  │   └── api/parse/       # API endpoint for file parsing
+  ├── components/          # FileUpload, InfraDiagram
+  ├── types/infra.ts       # Shared infrastructure type definitions
+  └── styles/              # Tailwind and global CSS
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+services:
+  - name: Frontend
+    runtime: node
+    startCommand: npm run start
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+databases:
+  - type: postgres
+    name: Main DB
+    port: 5432
 
-## Learn More
+environment:
+  NODE_ENV: production
 
-To learn more about Next.js, take a look at the following resources:
+## Future Enhancements:
+Download diagrams as PNG or SVG
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Support .tf.json (Terraform JSON)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Visual security checks and misconfiguration warnings
 
-## Deploy on Vercel
+Public link sharing and snapshotting
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Multi-file .zip upload support
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Author
+Rohan Sriram
+github.com/RohanSriram19
