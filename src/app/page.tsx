@@ -1,7 +1,13 @@
+import FileUpload from "@/components/FileUpload";
+
 export default function Home() {
   return (
-    <div className="bg-pink-500 text-white p-8 text-3xl font-bold">
-      If this is pink, Tailwind works!
-    </div>
+    <main className="flex min-h-screen flex-col items-center justify-center bg-gray-900">
+      <h1 className="text-4xl font-bold text-white mb-6">Welcome to Infralyze</h1>
+      <p className="text-lg text-gray-300 mb-8">
+        Upload your infrastructure code and see it visualized instantly.
+      </p>
+      <FileUpload />
+    </main>
   );
 }
