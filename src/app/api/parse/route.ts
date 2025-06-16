@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import YAML from "yaml";
+import type { InfraData } from "../../../types/infra";
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
@@ -11,7 +12,7 @@ export async function POST(req: NextRequest) {
 
   const content = await (file as File).text();
 
-  let parsed: any = null;
+  let parsed: InfraData | null = null;
   let type: "yaml" | "json" | "unknown" = "unknown";
   let parseError: string | null = null;
 

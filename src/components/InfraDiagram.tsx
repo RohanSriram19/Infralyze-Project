@@ -1,20 +1,21 @@
 "use client";
 import React, { useEffect, useRef } from "react";
 import mermaid from "mermaid";
+import type { InfraData } from "../types/infra";
 
 interface InfraDiagramProps {
-  data: any;
+  data: InfraData;
 }
 
-function makeMermaidDiagram(data: any): string {
-  let lines = ["graph TD"];
+function makeMermaidDiagram(data: InfraData): string {
+  const lines: string[] = ["graph TD"];
   if (data.services && Array.isArray(data.services)) {
-    data.services.forEach((svc: any, i: number) => {
+    data.services.forEach((svc, i) => {
       lines.push(`  svc${i}["${svc.name || "Service"}\\n(${svc.runtime})"]`);
     });
   }
   if (data.databases && Array.isArray(data.databases)) {
-    data.databases.forEach((db: any, j: number) => {
+    data.databases.forEach((db, j) => {
       lines.push(`  db${j}[(DB: ${db.name || "Database"})]`);
       if (data.services && Array.isArray(data.services) && data.services[0]) {
         lines.push(`  svc0 --> db${j}`);
@@ -34,10 +35,8 @@ export default function InfraDiagram({ data }: InfraDiagramProps) {
   useEffect(() => {
     if (!data || !ref.current) return;
     const diagram = makeMermaidDiagram(data);
-    // Must call initialize every time to ensure dark mode
     mermaid.initialize({ startOnLoad: false, theme: "dark" });
 
-    // Render Mermaid diagram in the div
     mermaid.render("theGraph", diagram).then(({ svg }) => {
       if (ref.current) {
         ref.current.innerHTML = svg;
@@ -51,7 +50,6 @@ export default function InfraDiagram({ data }: InfraDiagramProps) {
     <div className="my-8 w-full max-w-3xl mx-auto bg-gray-900 rounded p-4">
       <div className="mb-2 text-gray-400 font-semibold">Infrastructure Diagram:</div>
       <div ref={ref}></div>
-      {/* For debugging, show the source code */}
       <pre className="text-xs text-gray-500 mt-4">
         {makeMermaidDiagram(data)}
       </pre>

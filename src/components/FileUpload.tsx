@@ -1,16 +1,27 @@
 "use client";
 import React, { useRef, useState } from "react";
 import InfraDiagram from "./InfraDiagram";
+import type { InfraData } from "../types/infra";
+
+interface UploadResult {
+  name: string;
+  size: number;
+  preview: string;
+  type: string;
+  parsed?: InfraData;
+  parseError?: string;
+  error?: string;
+}
 
 export default function FileUpload() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadResult, setUploadResult] = useState<any>(null);
+  const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     setSelectedFile(file);
-    setUploadResult(null); // Reset result if a new file is picked
+    setUploadResult(null);
   };
 
   const handleUpload = async () => {
@@ -24,10 +35,10 @@ export default function FileUpload() {
     });
 
     if (res.ok) {
-      const data = await res.json();
+      const data: UploadResult = await res.json();
       setUploadResult(data);
     } else {
-      setUploadResult({ error: "Upload failed" });
+      setUploadResult({ error: "Upload failed", name: "", size: 0, preview: "", type: "" });
     }
   };
 
@@ -87,7 +98,6 @@ export default function FileUpload() {
                   {JSON.stringify(uploadResult.parsed, null, 2)}
                 </pre>
               </div>
-              {/* Show the infra diagram */}
               <InfraDiagram data={uploadResult.parsed} />
             </>
           )}
