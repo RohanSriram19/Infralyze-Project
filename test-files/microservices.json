@@ -1,0 +1,52 @@
+{
+  "name": "my-microservices-app",
+  "version": "1.0.0",
+  "services": [
+    {
+      "name": "frontend",
+      "type": "web",
+      "runtime": "React",
+      "buildCommand": "npm run build",
+      "startCommand": "npm start",
+      "port": 3000
+    },
+    {
+      "name": "user-service",
+      "type": "api",
+      "runtime": "Node.js",
+      "buildCommand": "npm run build",
+      "startCommand": "node dist/index.js",
+      "port": 8001
+    },
+    {
+      "name": "payment-service",
+      "type": "api",
+      "runtime": "Python",
+      "buildCommand": "pip install -r requirements.txt",
+      "startCommand": "python app.py",
+      "port": 8002
+    }
+  ],
+  "databases": [
+    {
+      "name": "user-db",
+      "type": "PostgreSQL",
+      "version": "15",
+      "host": "localhost",
+      "port": 5432
+    },
+    {
+      "name": "cache",
+      "type": "Redis",
+      "version": "7",
+      "host": "localhost",
+      "port": 6379
+    }
+  ],
+  "environment": {
+    "NODE_ENV": "production",
+    "DATABASE_URL": "postgresql://localhost:5432/userdb",
+    "REDIS_URL": "redis://localhost:6379",
+    "JWT_SECRET": "your-jwt-secret"
+  }
+}

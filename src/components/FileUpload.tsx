@@ -9,6 +9,7 @@ interface UploadResult {
   preview: string;
   type: string;
   parsed?: InfraData;
+  rawParsed?: any;
   parseError?: string;
   error?: string;
 }
@@ -45,13 +46,13 @@ export default function FileUpload() {
   return (
     <div className="flex flex-col items-center mt-8">
       <label className="block mb-2 text-white text-lg font-semibold" htmlFor="file-input">
-        Upload your IaC file:
+        Upload your configuration file (JSON, YAML, or any structured data):
       </label>
       <input
         ref={inputRef}
         id="file-input"
         type="file"
-        accept=".tf,.yaml,.yml,.json"
+        accept=".tf,.yaml,.yml,.json,.toml,.xml,.config,.conf,.properties,.env"
         className="block text-white file:mr-4 file:py-2 file:px-4
           file:rounded-lg file:border-0 file:text-sm file:font-semibold
           file:bg-blue-600 file:text-white hover:file:bg-blue-700"
@@ -93,13 +94,29 @@ export default function FileUpload() {
           {uploadResult.parsed && !uploadResult.parseError && (
             <>
               <div className="mt-6">
-                <div className="font-semibold mb-2">Parsed Structure:</div>
+                <div className="font-semibold mb-2">Normalized Infrastructure Structure:</div>
                 <pre className="bg-gray-900 rounded p-2 overflow-x-auto text-xs">
                   {JSON.stringify(uploadResult.parsed, null, 2)}
                 </pre>
               </div>
+              {uploadResult.rawParsed && (
+                <div className="mt-4">
+                  <div className="font-semibold mb-2">Raw Parsed Data:</div>
+                  <pre className="bg-gray-900 rounded p-2 overflow-x-auto text-xs max-h-60 overflow-y-auto">
+                    {JSON.stringify(uploadResult.rawParsed, null, 2)}
+                  </pre>
+                </div>
+              )}
               <InfraDiagram data={uploadResult.parsed} />
             </>
+          )}
+          {uploadResult.parsed && uploadResult.parseError && (
+            <div className="mt-6">
+              <div className="font-semibold mb-2 text-yellow-400">Partial Parse (with errors):</div>
+              <pre className="bg-gray-900 rounded p-2 overflow-x-auto text-xs">
+                {JSON.stringify(uploadResult.parsed, null, 2)}
+              </pre>
+            </div>
           )}
         </div>
       )}

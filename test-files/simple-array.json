@@ -1,0 +1,12 @@
+[
+  {
+    "name": "Service A",
+    "port": 8080,
+    "health_check": "/health"
+  },
+  {
+    "name": "Service B", 
+    "port": 8081,
+    "health_check": "/status"
+  }
+]
