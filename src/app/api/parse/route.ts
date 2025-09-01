@@ -1,11 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import YAML from "yaml";
-import type { InfraData } from "../../../types/infra";
+import type { 
+  InfraData, 
+  InfraService,
+  RawParsedData, 
+  ParsedContent, 
+  ParsedServiceLike, 
+  ParsedDatabaseLike
+} from "../../../types/infra";
+
+// Helper function to safely convert ParsedContent to string
+function parseContentToString(content: ParsedContent | undefined): string {
+  if (content === undefined || content === null) return '';
+  if (typeof content === 'string') return content;
+  if (typeof content === 'number' || typeof content === 'boolean') return String(content);
+  return '';
+}
+
+// Helper function to safely convert ParsedContent to number
+function parseContentToNumber(content: ParsedContent | undefined): number | undefined {
+  if (content === undefined || content === null) return undefined;
+  if (typeof content === 'number') return content;
+  if (typeof content === 'string') {
+    const num = Number(content);
+    return isNaN(num) ? undefined : num;
+  }
+  return undefined;
+}
 
 // Helper function to safely parse JSON
-function safeJsonParse(content: string): { success: boolean; data?: any; error?: string } {
+function safeJsonParse(content: string): { success: boolean; data?: RawParsedData; error?: string } {
   try {
-    const parsed = JSON.parse(content);
+    const parsed = JSON.parse(content) as RawParsedData;
     return { success: true, data: parsed };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : String(e) };
@@ -13,9 +39,9 @@ function safeJsonParse(content: string): { success: boolean; data?: any; error?:
 }
 
 // Helper function to safely parse YAML
-function safeYamlParse(content: string): { success: boolean; data?: any; error?: string } {
+function safeYamlParse(content: string): { success: boolean; data?: RawParsedData; error?: string } {
   try {
-    const parsed = YAML.parse(content);
+    const parsed = YAML.parse(content) as RawParsedData;
     return { success: true, data: parsed };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : String(e) };
@@ -45,8 +71,18 @@ function detectContentType(content: string, filename: string): "json" | "yaml" |
   return "unknown";
 }
 
+// Helper function to check if ParsedContent is an object
+function isObjectContent(content: ParsedContent): content is { [key: string]: ParsedContent } {
+  return typeof content === 'object' && content !== null && !Array.isArray(content);
+}
+
+// Helper function to check if ParsedContent is an array
+function isArrayContent(content: ParsedContent): content is ParsedContent[] {
+  return Array.isArray(content);
+}
+
 // Helper function to normalize parsed data to InfraData format
-function normalizeToInfraData(data: any): InfraData {
+function normalizeToInfraData(data: RawParsedData | undefined): InfraData {
   if (!data || typeof data !== 'object') {
     return {};
   }
@@ -54,84 +90,109 @@ function normalizeToInfraData(data: any): InfraData {
   const result: InfraData = {};
 
   // Handle different possible structures
-  if (Array.isArray(data)) {
+  if (isArrayContent(data)) {
     // If data is an array, treat each item as a service
-    result.services = data.map((item, index) => ({
-      name: item?.name || item?.id || `Service ${index + 1}`,
-      type: item?.type || item?.kind || 'unknown',
-      runtime: item?.runtime || item?.image || item?.version,
-      buildCommand: item?.buildCommand || item?.build,
-      startCommand: item?.startCommand || item?.command || item?.cmd,
-      rootDir: item?.rootDir || item?.workingDir || item?.path
-    }));
-  } else {
+    result.services = data.map((item, index) => {
+      const serviceItem = isObjectContent(item) ? item as ParsedServiceLike : {};
+      return {
+        name: parseContentToString(serviceItem.name || serviceItem.id) || `Service ${index + 1}`,
+        type: parseContentToString(serviceItem.type || serviceItem.kind) || 'unknown',
+        runtime: parseContentToString(serviceItem.runtime || serviceItem.image || serviceItem.version),
+        buildCommand: parseContentToString(serviceItem.buildCommand || serviceItem.build),
+        startCommand: parseContentToString(serviceItem.startCommand || serviceItem.command || serviceItem.cmd),
+        rootDir: parseContentToString(serviceItem.rootDir || serviceItem.workingDir || serviceItem.path)
+      };
+    });
+  } else if (isObjectContent(data)) {
     // Handle object structures
-    if (data.services || data.applications || data.apps) {
-      const services = data.services || data.applications || data.apps;
-      if (Array.isArray(services)) {
-        result.services = services.map((svc: any) => ({
-          name: svc?.name || svc?.id || 'Unknown Service',
-          type: svc?.type || svc?.kind || 'service',
-          runtime: svc?.runtime || svc?.image || svc?.version,
-          buildCommand: svc?.buildCommand || svc?.build,
-          startCommand: svc?.startCommand || svc?.command || svc?.cmd,
-          rootDir: svc?.rootDir || svc?.workingDir || svc?.path
-        }));
-      } else if (typeof services === 'object') {
+    const dataObj = data as { [key: string]: ParsedContent };
+    
+    if (dataObj.services || dataObj.applications || dataObj.apps) {
+      const services = dataObj.services || dataObj.applications || dataObj.apps;
+      if (isArrayContent(services)) {
+        result.services = services.map((svc) => {
+          const serviceItem = isObjectContent(svc) ? svc as ParsedServiceLike : {};
+          return {
+            name: parseContentToString(serviceItem.name || serviceItem.id) || 'Unknown Service',
+            type: parseContentToString(serviceItem.type || serviceItem.kind) || 'service',
+            runtime: parseContentToString(serviceItem.runtime || serviceItem.image || serviceItem.version),
+            buildCommand: parseContentToString(serviceItem.buildCommand || serviceItem.build),
+            startCommand: parseContentToString(serviceItem.startCommand || serviceItem.command || serviceItem.cmd),
+            rootDir: parseContentToString(serviceItem.rootDir || serviceItem.workingDir || serviceItem.path)
+          };
+        });
+      } else if (isObjectContent(services)) {
         // Handle services defined as object keys
-        result.services = Object.entries(services).map(([key, value]: [string, any]) => ({
-          name: key,
-          type: value?.type || value?.kind || 'service',
-          runtime: value?.runtime || value?.image || value?.version,
-          buildCommand: value?.buildCommand || value?.build,
-          startCommand: value?.startCommand || value?.command || value?.cmd,
-          rootDir: value?.rootDir || value?.workingDir || value?.path
-        }));
+        const servicesObj = services as { [key: string]: ParsedContent };
+        result.services = Object.entries(servicesObj).map(([key, value]) => {
+          const serviceItem = isObjectContent(value) ? value as ParsedServiceLike : {};
+          return {
+            name: key,
+            type: parseContentToString(serviceItem.type || serviceItem.kind) || 'service',
+            runtime: parseContentToString(serviceItem.runtime || serviceItem.image || serviceItem.version),
+            buildCommand: parseContentToString(serviceItem.buildCommand || serviceItem.build),
+            startCommand: parseContentToString(serviceItem.startCommand || serviceItem.command || serviceItem.cmd),
+            rootDir: parseContentToString(serviceItem.rootDir || serviceItem.workingDir || serviceItem.path)
+          };
+        });
       }
     }
 
-    if (data.databases || data.db || data.data) {
-      const databases = data.databases || data.db || data.data;
-      if (Array.isArray(databases)) {
-        result.databases = databases.map((db: any) => ({
-          name: db?.name || db?.id || 'Unknown Database',
-          type: db?.type || db?.engine || 'database',
-          version: db?.version,
-          host: db?.host || db?.hostname,
-          port: db?.port
-        }));
-      } else if (typeof databases === 'object') {
-        result.databases = Object.entries(databases).map(([key, value]: [string, any]) => ({
-          name: key,
-          type: value?.type || value?.engine || 'database',
-          version: value?.version,
-          host: value?.host || value?.hostname,
-          port: value?.port
-        }));
+    if (dataObj.databases || dataObj.db || dataObj.data) {
+      const databases = dataObj.databases || dataObj.db || dataObj.data;
+      if (isArrayContent(databases)) {
+        result.databases = databases.map((db) => {
+          const dbItem = isObjectContent(db) ? db as ParsedDatabaseLike : {};
+          return {
+            name: parseContentToString(dbItem.name || dbItem.id) || 'Unknown Database',
+            type: parseContentToString(dbItem.type || dbItem.engine) || 'database',
+            version: parseContentToString(dbItem.version),
+            host: parseContentToString(dbItem.host || dbItem.hostname),
+            port: parseContentToNumber(dbItem.port)
+          };
+        });
+      } else if (isObjectContent(databases)) {
+        const databasesObj = databases as { [key: string]: ParsedContent };
+        result.databases = Object.entries(databasesObj).map(([key, value]) => {
+          const dbItem = isObjectContent(value) ? value as ParsedDatabaseLike : {};
+          return {
+            name: key,
+            type: parseContentToString(dbItem.type || dbItem.engine) || 'database',
+            version: parseContentToString(dbItem.version),
+            host: parseContentToString(dbItem.host || dbItem.hostname),
+            port: parseContentToNumber(dbItem.port)
+          };
+        });
       }
     }
 
-    if (data.environment || data.env || data.envVars || data.variables) {
-      const env = data.environment || data.env || data.envVars || data.variables;
-      if (typeof env === 'object' && !Array.isArray(env)) {
-        result.environment = env;
+    if (dataObj.environment || dataObj.env || dataObj.envVars || dataObj.variables) {
+      const env = dataObj.environment || dataObj.env || dataObj.envVars || dataObj.variables;
+      if (isObjectContent(env)) {
+        const envObj = env as { [key: string]: ParsedContent };
+        const environment: Record<string, string> = {};
+        Object.entries(envObj).forEach(([key, value]) => {
+          environment[key] = parseContentToString(value);
+        });
+        result.environment = environment;
       }
     }
 
     // If no recognized structure, try to extract any meaningful data
     if (!result.services && !result.databases && !result.environment) {
       // Look for any object that might represent a service or component
-      const possibleServices: any[] = [];
+      const possibleServices: InfraService[] = [];
       
-      Object.entries(data).forEach(([key, value]: [string, any]) => {
-        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      Object.entries(dataObj).forEach(([key, value]) => {
+        if (isObjectContent(value)) {
+          const serviceItem = value as ParsedServiceLike;
           possibleServices.push({
             name: key,
-            type: value?.type || value?.kind || 'component',
-            runtime: value?.runtime || value?.image || value?.version,
-            buildCommand: value?.buildCommand || value?.build,
-            startCommand: value?.startCommand || value?.command || value?.cmd,
-            rootDir: value?.rootDir || value?.workingDir || value?.path
+            type: parseContentToString(serviceItem.type || serviceItem.kind) || 'component',
+            runtime: parseContentToString(serviceItem.runtime || serviceItem.image || serviceItem.version),
+            buildCommand: parseContentToString(serviceItem.buildCommand || serviceItem.build),
+            startCommand: parseContentToString(serviceItem.startCommand || serviceItem.command || serviceItem.cmd),
+            rootDir: parseContentToString(serviceItem.rootDir || serviceItem.workingDir || serviceItem.path)
           });
         }
       });
@@ -157,7 +218,7 @@ export async function POST(req: NextRequest) {
   const filename = (file as File).name;
 
   let parsed: InfraData | null = null;
-  let rawParsed: any = null;
+  let rawParsed: RawParsedData | undefined = undefined;
   let type: "yaml" | "json" | "unknown" = "unknown";
   let parseError: string | null = null;
 

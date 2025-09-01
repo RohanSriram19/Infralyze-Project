@@ -1,7 +1,7 @@
 "use client";
 import React, { useRef, useState } from "react";
 import InfraDiagram from "./InfraDiagram";
-import type { InfraData } from "../types/infra";
+import type { InfraData, RawParsedData } from "../types/infra";
 
 interface UploadResult {
   name: string;
@@ -9,7 +9,7 @@ interface UploadResult {
   preview: string;
   type: string;
   parsed?: InfraData;
-  rawParsed?: any;
+  rawParsed?: RawParsedData;
   parseError?: string;
   error?: string;
 }
