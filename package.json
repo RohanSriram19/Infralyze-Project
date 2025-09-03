@@ -1,6 +1,7 @@
 {
   "name": "infralyze-clean",
-  "version": "0.1.0",
+  "version": "1.1.0",
+  "description": "Universal infrastructure visualization tool with robust JSON/YAML parsing",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",

@@ -12,12 +12,24 @@
 
 ## Features
 
-- Upload `.yaml`, `.yml`, or `.json` IaC files
-- Automatically parse and display service, database, and environment configurations
-- Generate a live infrastructure diagram using Mermaid.js
-- Fully typed backend and frontend (TypeScript)
-- Responsive, accessible user interface built with Tailwind CSS
-- Secure parsing on the backend with file validation
+- 🚀 **Universal File Support**: Upload `.yaml`, `.yml`, `.json`, `.toml`, `.xml`, `.config`, and more
+- 🔍 **Smart Content Detection**: Automatic format detection regardless of file extension
+- 🛡️ **Robust Parsing**: Fallback parsing between JSON and YAML with graceful error handling
+- 📊 **Flexible Visualization**: Supports Docker Compose, Kubernetes, Terraform, and custom configurations
+- 🎯 **Type-Safe**: Fully typed backend and frontend with TypeScript strict mode
+- 🎨 **Modern UI**: Responsive, accessible interface built with Tailwind CSS
+- ⚡ **Real-time Diagrams**: Generate live infrastructure diagrams using Mermaid.js
+- 🔒 **Secure Processing**: Server-side parsing with comprehensive validation
+
+---
+
+## Supported Formats
+
+- **Docker Compose** - Multi-container applications
+- **Kubernetes** - Container orchestration manifests  
+- **Terraform** - Infrastructure as code configurations
+- **Microservices** - Custom service architectures
+- **Generic JSON/YAML** - Any structured configuration data
 
 ---
 

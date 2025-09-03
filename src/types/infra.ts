@@ -1,4 +1,5 @@
 // Base type for unknown JSON/YAML content
+// This recursive type can represent any valid JSON/YAML structure
 export type ParsedContent = 
   | string 
   | number 
@@ -8,29 +9,34 @@ export type ParsedContent =
   | { [key: string]: ParsedContent };
 
 // Type for raw parsed data that can be any valid JSON/YAML structure
+// Used to maintain the original parsed structure before normalization
 export type RawParsedData = ParsedContent;
 
+// Core interface representing a service/application component
 export interface InfraService {
-  name?: string;
-  runtime?: string;
-  rootDir?: string;
-  buildCommand?: string;
-  startCommand?: string;
-  type?: string;
+  name?: string;        // Service identifier
+  runtime?: string;     // Runtime environment (e.g., Node.js, Python, Java)
+  rootDir?: string;     // Working directory path
+  buildCommand?: string; // Command to build the service
+  startCommand?: string; // Command to start the service
+  type?: string;        // Service type (web, api, worker, etc.)
 }
 
+// Core interface representing a database component
 export interface InfraDatabase {
-  name?: string;
-  type?: string;
-  version?: string;
-  host?: string;
-  port?: number;
+  name?: string;        // Database identifier
+  type?: string;        // Database type (PostgreSQL, MySQL, MongoDB, etc.)
+  version?: string;     // Database version
+  host?: string;        // Database host
+  port?: number;        // Database port
 }
 
+// Main data structure representing parsed infrastructure configuration
 export interface InfraData {
-  services?: InfraService[];
-  databases?: InfraDatabase[];
-  environment?: Record<string, string>;
+  services?: InfraService[];                // Array of service/application components
+  databases?: InfraDatabase[];              // Array of database components
+  environment?: Record<string, string>;     // Environment variables
+  // Index signature allows for additional dynamic properties from various config formats
   [key: string]: ParsedContent | InfraService[] | InfraDatabase[] | Record<string, string> | undefined;
 }
 
@@ -65,14 +71,24 @@ export interface ParsedDatabaseLike {
   port?: ParsedContent;
 }
 
-// Helper function to safely convert ParsedContent to string
+/**
+ * Safely converts ParsedContent to string
+ * Handles various data types and provides fallback for complex types
+ * @param content - The parsed content to convert
+ * @returns String representation of the content
+ */
 export function parseContentToString(content: ParsedContent): string {
   if (typeof content === 'string') return content;
   if (typeof content === 'number' || typeof content === 'boolean') return String(content);
   return '';
 }
 
-// Helper function to safely convert ParsedContent to number
+/**
+ * Safely converts ParsedContent to number
+ * Attempts to parse strings as numbers, returns undefined for invalid values
+ * @param content - The parsed content to convert
+ * @returns Number value or undefined if conversion fails
+ */
 export function parseContentToNumber(content: ParsedContent): number | undefined {
   if (typeof content === 'number') return content;
   if (typeof content === 'string') {
