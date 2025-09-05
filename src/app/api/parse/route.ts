@@ -6,8 +6,10 @@ import type {
   RawParsedData, 
   ParsedContent, 
   ParsedServiceLike, 
-  ParsedDatabaseLike
+  ParsedDatabaseLike,
+  ValidationResult
 } from "../../../types/infra";
+import { validateInfraStructure } from "../../../types/infra";
 
 // Helper function to safely convert ParsedContent to string
 function parseContentToString(content: ParsedContent | undefined): string {
@@ -26,16 +28,6 @@ function parseContentToNumber(content: ParsedContent | undefined): number | unde
     return isNaN(num) ? undefined : num;
   }
   return undefined;
-}
-
-// Helper function to safely parse JSON
-function safeJsonParse(content: string): { success: boolean; data?: RawParsedData; error?: string } {
-  try {
-    const parsed = JSON.parse(content) as RawParsedData;
-    return { success: true, data: parsed };
-  } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : String(e) };
-  }
 }
 
 // Helper function to safely parse YAML
@@ -69,6 +61,38 @@ function detectContentType(content: string, filename: string): "json" | "yaml" |
   }
   
   return "unknown";
+}
+
+// Enhanced JSON parsing with better error messages
+function safeJsonParseEnhanced(content: string): { success: boolean; data?: RawParsedData; error?: string; suggestion?: string } {
+  try {
+    const parsed = JSON.parse(content) as RawParsedData;
+    return { success: true, data: parsed };
+  } catch (e) {
+    const error = e instanceof Error ? e.message : String(e);
+    let suggestion = '';
+    
+    if (error.includes('Unexpected token')) {
+      suggestion = 'Check for missing quotes, commas, or brackets in your JSON structure';
+    } else if (error.includes('Unexpected end')) {
+      suggestion = 'Your JSON appears to be incomplete - check for missing closing brackets or braces';
+    } else if (error.includes('position')) {
+      suggestion = 'There\'s a syntax error in your JSON - try validating it with a JSON formatter';
+    }
+    
+    return { success: false, error, suggestion };
+  }
+}
+
+// Helper function to safely validate infrastructure data
+function safeValidateInfraStructure(data?: RawParsedData): ValidationResult | null {
+  if (!data) return null;
+  try {
+    return validateInfraStructure(data);
+  } catch (e) {
+    console.error('Validation error:', e);
+    return null;
+  }
 }
 
 // Helper function to check if ParsedContent is an object
@@ -221,58 +245,74 @@ export async function POST(req: NextRequest) {
   let rawParsed: RawParsedData | undefined = undefined;
   let type: "yaml" | "json" | "unknown" = "unknown";
   let parseError: string | null = null;
+  let validation: ValidationResult | null = null;
+  let suggestions: string[] = [];
 
   // Detect content type
   type = detectContentType(content, filename);
 
   // Try to parse based on detected type first, then fallback to other formats
   if (type === "json") {
-    const jsonResult = safeJsonParse(content);
+    const jsonResult = safeJsonParseEnhanced(content);
     if (jsonResult.success) {
       rawParsed = jsonResult.data;
+      validation = safeValidateInfraStructure(jsonResult.data);
       parsed = normalizeToInfraData(jsonResult.data);
+      suggestions = validation?.suggestions || [];
     } else {
       // Fallback to YAML if JSON parsing fails
       const yamlResult = safeYamlParse(content);
       if (yamlResult.success) {
         rawParsed = yamlResult.data;
+        validation = safeValidateInfraStructure(yamlResult.data);
         parsed = normalizeToInfraData(yamlResult.data);
         type = "yaml";
+        suggestions = validation?.suggestions || [];
+        suggestions.unshift(`Note: File parsed as YAML despite .json extension. ${jsonResult.suggestion || ''}`);
       } else {
-        parseError = `JSON parse error: ${jsonResult.error}. YAML parse error: ${yamlResult.error}`;
+        parseError = `JSON parse error: ${jsonResult.error}${jsonResult.suggestion ? ` (${jsonResult.suggestion})` : ''}. YAML parse error: ${yamlResult.error}`;
       }
     }
   } else if (type === "yaml") {
     const yamlResult = safeYamlParse(content);
     if (yamlResult.success) {
       rawParsed = yamlResult.data;
+      validation = safeValidateInfraStructure(yamlResult.data);
       parsed = normalizeToInfraData(yamlResult.data);
+      suggestions = validation?.suggestions || [];
     } else {
       // Fallback to JSON if YAML parsing fails
-      const jsonResult = safeJsonParse(content);
+      const jsonResult = safeJsonParseEnhanced(content);
       if (jsonResult.success) {
         rawParsed = jsonResult.data;
+        validation = safeValidateInfraStructure(jsonResult.data);
         parsed = normalizeToInfraData(jsonResult.data);
         type = "json";
+        suggestions = validation?.suggestions || [];
+        suggestions.unshift("Note: File parsed as JSON despite YAML-like extension");
       } else {
-        parseError = `YAML parse error: ${yamlResult.error}. JSON parse error: ${jsonResult.error}`;
+        parseError = `YAML parse error: ${yamlResult.error}. JSON parse error: ${jsonResult.error}${jsonResult.suggestion ? ` (${jsonResult.suggestion})` : ''}`;
       }
     }
   } else {
     // Try both formats for unknown types
-    const jsonResult = safeJsonParse(content);
+    const jsonResult = safeJsonParseEnhanced(content);
     const yamlResult = safeYamlParse(content);
     
     if (jsonResult.success) {
       rawParsed = jsonResult.data;
+      validation = safeValidateInfraStructure(jsonResult.data);
       parsed = normalizeToInfraData(jsonResult.data);
       type = "json";
+      suggestions = validation?.suggestions || [];
     } else if (yamlResult.success) {
       rawParsed = yamlResult.data;
+      validation = safeValidateInfraStructure(yamlResult.data);
       parsed = normalizeToInfraData(yamlResult.data);
       type = "yaml";
+      suggestions = validation?.suggestions || [];
     } else {
-      parseError = `Could not parse as JSON or YAML. JSON error: ${jsonResult.error}. YAML error: ${yamlResult.error}`;
+      parseError = `Could not parse as JSON or YAML. JSON error: ${jsonResult.error}${jsonResult.suggestion ? ` (${jsonResult.suggestion})` : ''}. YAML error: ${yamlResult.error}`;
     }
   }
 
@@ -284,5 +324,7 @@ export async function POST(req: NextRequest) {
     parsed,
     rawParsed,
     parseError,
+    validation,
+    suggestions,
   });
 }

@@ -1,7 +1,7 @@
 "use client";
 import React, { useRef, useState, useCallback } from "react";
 import InfraDiagram from "./InfraDiagram";
-import type { InfraData, RawParsedData } from "../types/infra";
+import type { InfraData, RawParsedData, ValidationResult } from "../types/infra";
 import { exportAsJSON, formatFileSize, isSupportedFileType, generateInfraSummary } from "../utils/fileUtils";
 
 interface UploadResult {
@@ -13,6 +13,8 @@ interface UploadResult {
   rawParsed?: RawParsedData;
   parseError?: string;
   error?: string;
+  validation?: ValidationResult;
+  suggestions?: string[];
 }
 
 export default function FileUpload() {
@@ -293,6 +295,57 @@ export default function FileUpload() {
                 <pre className="bg-gray-900 rounded-lg p-4 overflow-x-auto text-sm text-gray-300 border border-gray-700">
                   {uploadResult.preview}
                 </pre>
+              </div>
+            )}
+
+            {/* Validation Results */}
+            {uploadResult.validation && (
+              <div className={`mb-4 rounded-lg p-4 border ${
+                uploadResult.validation.confidence === 'high' 
+                  ? 'bg-green-900/20 border-green-500/30' 
+                  : uploadResult.validation.confidence === 'medium'
+                  ? 'bg-yellow-900/20 border-yellow-500/30'
+                  : 'bg-blue-900/20 border-blue-500/30'
+              }`}>
+                <div className="flex items-center space-x-2 mb-2">
+                  {uploadResult.validation.confidence === 'high' ? (
+                    <svg className="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  ) : uploadResult.validation.confidence === 'medium' ? (
+                    <svg className="h-5 w-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                  <span className={`font-medium ${
+                    uploadResult.validation.confidence === 'high' 
+                      ? 'text-green-400' 
+                      : uploadResult.validation.confidence === 'medium'
+                      ? 'text-yellow-400'
+                      : 'text-blue-400'
+                  }`}>
+                    Validation: {uploadResult.validation.confidence.toUpperCase()} Confidence
+                  </span>
+                  {uploadResult.validation.detectedFormat && (
+                    <span className="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded">
+                      {uploadResult.validation.detectedFormat}
+                    </span>
+                  )}
+                </div>
+                {uploadResult.suggestions && uploadResult.suggestions.length > 0 && (
+                  <div className="space-y-1">
+                    {uploadResult.suggestions.map((suggestion, index) => (
+                      <p key={index} className="text-sm text-gray-300 flex items-start">
+                        <span className="mr-2 mt-1">•</span>
+                        <span>{suggestion}</span>
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
