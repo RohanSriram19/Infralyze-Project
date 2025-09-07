@@ -293,3 +293,207 @@ export function extractConfigMetadata(data: ParsedContent): ConfigMetadata {
 
   return metadata;
 }
+
+/**
+ * Optimized validation for large configuration files
+ * Uses early returns and selective analysis for better performance
+ * @param data - The parsed infrastructure data
+ * @returns Quick validation result focused on critical patterns
+ */
+export function quickValidateInfraStructure(data: ParsedContent): Pick<ValidationResult, 'isValid' | 'confidence' | 'detectedFormat'> {
+  if (!data || typeof data !== 'object') {
+    return { isValid: false, confidence: 'low', detectedFormat: undefined };
+  }
+
+  if (Array.isArray(data)) {
+    return { isValid: true, confidence: 'medium', detectedFormat: 'Service Array' };
+  }
+
+  const obj = data as { [key: string]: ParsedContent };
+  const keys = Object.keys(obj);
+  
+  // Fast pattern detection - check most common patterns first
+  if (keys.includes('apiVersion') && keys.includes('kind')) {
+    return { isValid: true, confidence: 'high', detectedFormat: 'Kubernetes' };
+  }
+  
+  if (keys.includes('services') && keys.includes('version')) {
+    return { isValid: true, confidence: 'high', detectedFormat: 'Docker Compose' };
+  }
+  
+  if (keys.some(key => ['services', 'applications', 'apps'].includes(key))) {
+    return { isValid: true, confidence: 'medium', detectedFormat: 'Service Config' };
+  }
+  
+  return { isValid: true, confidence: 'low', detectedFormat: 'Generic Config' };
+}
+
+/**
+ * Enhanced service interface with additional cloud-native properties
+ * Supports modern deployment patterns and container orchestration
+ */
+export interface EnhancedInfraService extends InfraService {
+  // Container properties
+  image?: string;           // Container image name
+  tag?: string;             // Image tag/version
+  registry?: string;        // Container registry URL
+  
+  // Resource requirements
+  cpu?: string;             // CPU requirements (e.g., "100m", "0.5")
+  memory?: string;          // Memory requirements (e.g., "128Mi", "1Gi")
+  storage?: string;         // Storage requirements
+  
+  // Network configuration
+  ports?: number[];         // Exposed ports
+  protocol?: 'HTTP' | 'HTTPS' | 'TCP' | 'UDP';
+  
+  // Health checks
+  healthCheck?: string;     // Health check endpoint
+  readinessProbe?: string;  // Readiness probe configuration
+  
+  // Scaling
+  replicas?: number;        // Number of instances
+  autoScale?: boolean;      // Auto-scaling enabled
+  
+  // Environment
+  secrets?: string[];       // Required secrets
+  configMaps?: string[];    // Required config maps
+}
+
+/**
+ * Converts basic InfraService to EnhancedInfraService with intelligent defaults
+ * Extracts additional properties from various configuration formats
+ * @param service - Basic service definition
+ * @param rawData - Original parsed data for context
+ * @returns Enhanced service with additional properties
+ */
+export function enhanceInfraService(service: InfraService, rawData?: ParsedContent): EnhancedInfraService {
+  const enhanced: EnhancedInfraService = { ...service };
+
+  // Extract image information from runtime or other fields
+  if (service.runtime?.includes(':')) {
+    const [image, tag] = service.runtime.split(':');
+    enhanced.image = image;
+    enhanced.tag = tag;
+  }
+
+  // Set intelligent defaults based on service type
+  if (service.type) {
+    switch (service.type.toLowerCase()) {
+      case 'web':
+      case 'frontend':
+        enhanced.protocol = 'HTTP';
+        enhanced.ports = enhanced.ports || [80, 3000];
+        enhanced.healthCheck = enhanced.healthCheck || '/health';
+        break;
+      case 'api':
+      case 'backend':
+        enhanced.protocol = 'HTTPS';
+        enhanced.ports = enhanced.ports || [443, 8080];
+        enhanced.healthCheck = enhanced.healthCheck || '/api/health';
+        break;
+      case 'database':
+      case 'db':
+        enhanced.protocol = 'TCP';
+        enhanced.ports = enhanced.ports || [5432, 3306, 27017];
+        break;
+    }
+  }
+
+  // Extract additional properties from raw data if available
+  if (rawData && typeof rawData === 'object' && !Array.isArray(rawData)) {
+    const rawObj = rawData as { [key: string]: ParsedContent };
+    
+    // Try to find service-specific configuration
+    const serviceName = service.name?.toLowerCase();
+    if (serviceName && rawObj[serviceName]) {
+      const serviceConfig = rawObj[serviceName];
+      if (typeof serviceConfig === 'object' && !Array.isArray(serviceConfig)) {
+        const config = serviceConfig as { [key: string]: ParsedContent };
+        
+        // Extract resource requirements
+        if (config.resources && typeof config.resources === 'object') {
+          const resources = config.resources as { [key: string]: ParsedContent };
+          enhanced.cpu = parseContentToString(resources.cpu);
+          enhanced.memory = parseContentToString(resources.memory);
+        }
+        
+        // Extract scaling info
+        if (config.replicas) {
+          enhanced.replicas = parseContentToNumber(config.replicas);
+        }
+        
+        if (config.autoscaling || config.autoScale) {
+          enhanced.autoScale = true;
+        }
+      }
+    }
+  }
+
+  return enhanced;
+}
+
+/**
+ * Validates enhanced service configuration for completeness and best practices
+ * @param service - Enhanced service to validate
+ * @returns Validation result with specific recommendations
+ */
+export function validateEnhancedService(service: EnhancedInfraService): {
+  isComplete: boolean;
+  score: number; // 0-100
+  recommendations: string[];
+} {
+  const result = {
+    isComplete: false,
+    score: 0,
+    recommendations: [] as string[]
+  };
+
+  let score = 0;
+
+  // Basic properties (20 points)
+  if (service.name) score += 10;
+  if (service.type) score += 10;
+
+  // Container properties (20 points)  
+  if (service.image) score += 10;
+  if (service.tag) score += 5;
+  if (service.registry) score += 5;
+
+  // Resource management (20 points)
+  if (service.cpu) score += 10;
+  if (service.memory) score += 10;
+
+  // Network configuration (20 points)
+  if (service.ports && service.ports.length > 0) score += 10;
+  if (service.protocol) score += 5;
+  if (service.healthCheck) score += 5;
+
+  // Operational readiness (20 points)
+  if (service.replicas !== undefined) score += 5;
+  if (service.autoScale) score += 5;
+  if (service.readinessProbe) score += 5;
+  if (service.secrets || service.configMaps) score += 5;
+
+  result.score = score;
+  result.isComplete = score >= 70;
+
+  // Generate recommendations
+  if (!service.name) result.recommendations.push('Add a descriptive service name');
+  if (!service.type) result.recommendations.push('Specify service type (web, api, database, etc.)');
+  if (!service.image) result.recommendations.push('Define container image for deployment');
+  if (!service.cpu || !service.memory) result.recommendations.push('Set resource limits (CPU/memory) for better resource management');
+  if (!service.healthCheck) result.recommendations.push('Add health check endpoint for monitoring');
+  if (service.replicas === undefined) result.recommendations.push('Define replica count for scalability');
+  if (!service.readinessProbe) result.recommendations.push('Configure readiness probe for zero-downtime deployments');
+
+  if (result.score >= 90) {
+    result.recommendations.push('Excellent configuration! Service is production-ready');
+  } else if (result.score >= 70) {
+    result.recommendations.push('Good configuration with room for improvement');
+  } else {
+    result.recommendations.push('Configuration needs significant improvements before production deployment');
+  }
+
+  return result;
+}
