@@ -209,3 +209,87 @@ export function validateInfraStructure(data: ParsedContent): ValidationResult {
 
   return result;
 }
+
+/**
+ * Extracts metadata from infrastructure configuration
+ * Provides additional context about the configuration structure
+ * @param data - The parsed infrastructure data
+ * @returns Metadata about the configuration
+ */
+export interface ConfigMetadata {
+  totalProperties: number;
+  hasNestedStructures: boolean;
+  estimatedComplexity: 'simple' | 'moderate' | 'complex';
+  potentialIssues: string[];
+  recommendations: string[];
+}
+
+export function extractConfigMetadata(data: ParsedContent): ConfigMetadata {
+  const metadata: ConfigMetadata = {
+    totalProperties: 0,
+    hasNestedStructures: false,
+    estimatedComplexity: 'simple',
+    potentialIssues: [],
+    recommendations: []
+  };
+
+  if (!data || typeof data !== 'object') {
+    metadata.potentialIssues.push('Configuration is not a structured object');
+    return metadata;
+  }
+
+  const analyzeObject = (obj: ParsedContent, depth = 0): void => {
+    if (typeof obj === 'object' && obj !== null) {
+      if (Array.isArray(obj)) {
+        metadata.totalProperties += obj.length;
+        obj.forEach(item => analyzeObject(item, depth + 1));
+      } else {
+        const objectData = obj as { [key: string]: ParsedContent };
+        const keys = Object.keys(objectData);
+        metadata.totalProperties += keys.length;
+        
+        if (depth > 0) {
+          metadata.hasNestedStructures = true;
+        }
+
+        keys.forEach(key => {
+          const value = objectData[key];
+          // Check for common issues
+          if (key.toLowerCase().includes('password') && typeof value === 'string' && value.length > 0) {
+            metadata.potentialIssues.push(`Plaintext password found in property: ${key}`);
+          }
+          
+          if (key.toLowerCase().includes('secret') && typeof value === 'string' && value.length > 0) {
+            metadata.potentialIssues.push(`Plaintext secret found in property: ${key}`);
+          }
+
+          analyzeObject(value, depth + 1);
+        });
+      }
+    }
+  };
+
+  analyzeObject(data);
+
+  // Determine complexity
+  if (metadata.totalProperties > 50 || (metadata.hasNestedStructures && metadata.totalProperties > 20)) {
+    metadata.estimatedComplexity = 'complex';
+    metadata.recommendations.push('Consider breaking down large configurations into smaller, focused files');
+  } else if (metadata.totalProperties > 15 || metadata.hasNestedStructures) {
+    metadata.estimatedComplexity = 'moderate';
+    metadata.recommendations.push('Configuration structure looks well-organized');
+  }
+
+  // Add security recommendations
+  if (metadata.potentialIssues.some(issue => issue.includes('password') || issue.includes('secret'))) {
+    metadata.recommendations.push('Use environment variables or secret management systems for sensitive data');
+    metadata.recommendations.push('Consider using .env files or external secret stores');
+  }
+
+  // Add structural recommendations
+  if (!metadata.hasNestedStructures && metadata.totalProperties > 10) {
+    metadata.recommendations.push('Consider organizing properties into logical groups');
+  }
+
+  return metadata;
+}

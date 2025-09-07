@@ -15,11 +15,14 @@
 - 🚀 **Universal File Support**: Upload `.yaml`, `.yml`, `.json`, `.toml`, `.xml`, `.config`, and more
 - 🔍 **Smart Content Detection**: Automatic format detection regardless of file extension
 - 🛡️ **Robust Parsing**: Fallback parsing between JSON and YAML with graceful error handling
+- 🧠 **Intelligent Validation**: Advanced pattern recognition for infrastructure formats
 - 📊 **Flexible Visualization**: Supports Docker Compose, Kubernetes, Terraform, and custom configurations
 - 🎯 **Type-Safe**: Fully typed backend and frontend with TypeScript strict mode
 - 🎨 **Modern UI**: Responsive, accessible interface built with Tailwind CSS
 - ⚡ **Real-time Diagrams**: Generate live infrastructure diagrams using Mermaid.js
 - 🔒 **Secure Processing**: Server-side parsing with comprehensive validation
+- 📋 **Export Capabilities**: Download parsed data and infrastructure summaries
+- 🔍 **Configuration Analysis**: Metadata extraction and complexity assessment
 
 ---
 
@@ -82,6 +85,30 @@ Public link sharing and snapshotting
 
 Multi-file .zip upload support
 
-Author
+---
+
+## Recent Updates (September 2025)
+
+### ✨ Intelligent Validation System
+- Added comprehensive infrastructure pattern detection
+- Smart confidence scoring for configuration quality
+- Actionable suggestions for file improvements
+- Enhanced security warnings for sensitive data
+
+### 🔧 Configuration Analysis
+- New metadata extraction utilities
+- Complexity assessment algorithms  
+- Structural recommendations engine
+- Improved type safety and error handling
+
+### 🎨 Enhanced User Experience
+- Visual validation feedback with color-coded confidence levels
+- Professional suggestion display with icons
+- Better error messages with specific guidance
+- Improved drag-and-drop interface
+
+---
+
+## Author
 Rohan Sriram
 github.com/RohanSriram19
